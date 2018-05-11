@@ -8,23 +8,11 @@
 本质上是一个 do-while 循环，这种模型通常被称作 EventLoop。  
 关键在于：如何管理消息/事件，如何让线程在没有处理消息时休眠以避免占用资源，在有消息时立刻被唤醒
 
-RunLoop 实际上就是一个对象，这个对象管理了其需要处理的事件和消息，并提供了一个入口函数来执行上面 Event Loop 的逻辑。线程执行了这个函数后，就会一直处于这个函数内部“接受消息->等待->处理”的循环中，直到这个循环结束，函数返回。
-
 ###二、NSRunLoop 与 CFRunLoopRef
 
 >CFRunLoopRef 是在 CoreFoundation框架内的，它提供了纯 C 函数的 API，所以这些 API 都是线程安全的
 
 >NSRunLoop 是基于 CFRunLoopRef 的封装，提供了面向对象的 API，但是这些 API 都不是线程安全的
-
-```
-Foundation
-[NSRunLoop mainRunLoop];//获得主线程的 RunLoop 对象
-[NSRunLoop CurrentRunLoop];//获得当前线程的 RunLoop 对象
-
-CoreFoundation
-CFRunLoopGetMain();//获得主线程的 RunLoop 对象
-CFRunLoopGetCurrent();//获得当前线程的 RunLoop 对象
-```
 
 ###三、RunLoop 与线程的关系
 
@@ -39,30 +27,26 @@ CFRunLoopGetCurrent();//获得当前线程的 RunLoop 对象
 在 CoreFoundation 里面关于 RunLoop 有5个类  
 
 ```
-CFRunLoopRef ：主 RunLoop 或者当前 RunLoop
+CFRunLoopRef 
 
-CFRunLoopModeRef ：RunLoop 的运行模式
+CFRunLoopModeRef 
 
-CFRunLoopSoureRef ：事件源，输入源
->Source1：基于 Port 的线程间通信，触摸事件
->Source0：主动触摸事件的回调，PreformSelectors
+CFRunLoopSoureRef ：事件产生
  
 CFRunLoopTimerRef ：基于时间的触发器
 
 CFRunLoopObserverRef ：观察者
 ```
 
-一个 RunLoop 包含若干个 Mode,每个 Mode 又包含若干个 Source/Timer/Observer。每次 RunLoop 启动时，只能指定其中一个 Mode（ 如果 Mode 为空，RunLoop 会立刻退出），这个 Mode 被称为 CurrentMode。如果需要切换 Mode，只能退出 Loop,在重新指定 Mode 进入。这样做主要是为了分割开不同组的 Source/Timer/Observer，让其互不影响。
+一个 RunLoop 包含若干个 Mode,每个 Mode 又包含若干个 Source/Timer/Observer。每次调用 RunLoop 的主函数时，只能指定其中一个 Mode，这个 Mode 被称为 CurrentMode。如果需要切换 Mode，只能退出 Loop,在重新指定 Mode 进入。这样做主要是为了分割开不同组的 Source/Timer/Observer，让其互不影响。
 
 ###五、RunLoop 的 Mode
-系统默认注册的常用 Mode
-
 ```
-NSDefaultRunLoopMode（kCFRunLoopDefaultMode） : App默认 Mode,通常主线程在这个 Mode
+NSDefaultRunLoopMode : App默认 Mode,通常主线程在这个 Mode
 
 UITrackingRunLoopMode : 追踪 ScrollView 滑动的状态
 
-NSRunLoopCommonModes（kCFRunLoopDefaultMode） = NSDefaultRunLoopMode + UITrackingRunLoopMode
+NSRunLoopCommonModes = NSDefaultRunLoopMode + UITrackingRunLoopMode
 ```
 ###六、RunLoop 使用
 
@@ -96,9 +80,3 @@ NSRunLoopCommonModes（kCFRunLoopDefaultMode） = NSDefaultRunLoopMode + UITrack
 4. performSelecter
 
 	>当 NSObject 调用 performSelector：afterDelay后，实际上其内部会创建 Timer 并添加到当前线程的 RunLoop 中，如果当前线程没有 RunLoop，则这个方法会失效
-	
-5. 常驻线程
-	
-	子线程执行完操作之后就会立即释放，即使我们使用强引用子线程使子线程不被释放，也不能给子线程再次添加操作，或者再次开启
-	
-	
